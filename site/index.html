@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2026 Fantasy Draft Board — NFL Depth Charts</title>
+<meta name="description" content="Live 2026 NFL depth charts joined to consensus ADP, 2025 production, snap share and a Vegas-priced strength of schedule. Built for draft day.">
+<meta name="color-scheme" content="dark light">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231a1a19'/%3E%3Cellipse cx='16' cy='16' rx='9' ry='6' fill='none' stroke='%23eda100' stroke-width='2.2'/%3E%3Cpath d='M11 16h10M16 13v6' stroke='%23fcfcfb' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="top">
+  <div class="top-in">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 40 26" width="34" height="22">
+          <ellipse cx="20" cy="13" rx="17.5" ry="11.5" fill="none" stroke="currentColor" stroke-width="2.4"/>
+          <path d="M12 13h16M20 8.5v9M15 10.5v5M25 10.5v5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </span>
+      <span class="brand-txt">
+        <b>Draft Board <span class="yr">2026</span></b>
+        <small id="stamp">loading…</small>
+      </span>
+    </div>
+    <nav class="tabs" id="tabs" role="tablist" aria-label="Views">
+      <button role="tab" data-view="depth"  aria-selected="true">Depth charts</button>
+      <button role="tab" data-view="board"  aria-selected="false">Big board</button>
+      <button role="tab" data-view="value"  aria-selected="false">Value map</button>
+      <button role="tab" data-view="byes"   aria-selected="false">Bye planner</button>
+      <button role="tab" data-view="sos"    aria-selected="false">Schedule</button>
+      <button role="tab" data-view="room"   aria-selected="false">Draft room</button>
+    </nav>
+    <button class="theme" id="theme" aria-label="Switch colour theme" title="Switch colour theme">
+      <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9Z" fill="currentColor"/></svg>
+    </button>
+  </div>
+</header>
+
+<!-- One filter row, above everything it scopes. -->
+<div class="filters" id="filters">
+  <div class="filters-in">
+    <div class="fgroup">
+      <label class="flab" for="fmt">Scoring</label>
+      <div class="seg" id="fmt" role="radiogroup" aria-label="Scoring format">
+        <button role="radio" data-fmt="ppr" aria-checked="true">PPR</button>
+        <button role="radio" data-fmt="half" aria-checked="false">Half</button>
+        <button role="radio" data-fmt="standard" aria-checked="false">Std</button>
+        <button role="radio" data-fmt="superflex" aria-checked="false">SFlex</button>
+      </div>
+    </div>
+    <div class="fgroup">
+      <label class="flab" for="size">Teams</label>
+      <div class="seg" id="size" role="radiogroup" aria-label="League size">
+        <button role="radio" data-size="8"  aria-checked="false">8</button>
+        <button role="radio" data-size="10" aria-checked="false">10</button>
+        <button role="radio" data-size="12" aria-checked="true">12</button>
+        <button role="radio" data-size="14" aria-checked="false">14</button>
+      </div>
+    </div>
+    <div class="fgroup">
+      <span class="flab">Position</span>
+      <div class="seg pos" id="pos" role="group" aria-label="Position filter">
+        <button data-pos="ALL" aria-pressed="true">All</button>
+        <button data-pos="QB"  aria-pressed="false"><i class="dot p-QB"></i>QB</button>
+        <button data-pos="RB"  aria-pressed="false"><i class="dot p-RB"></i>RB</button>
+        <button data-pos="WR"  aria-pressed="false"><i class="dot p-WR"></i>WR</button>
+        <button data-pos="TE"  aria-pressed="false"><i class="dot p-TE"></i>TE</button>
+      </div>
+    </div>
+    <div class="fgroup grow">
+      <label class="flab" for="q">Search</label>
+      <div class="search">
+        <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="m16 16 4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <input id="q" type="search" placeholder="Player or team…" autocomplete="off" spellcheck="false">
+      </div>
+    </div>
+    <div class="fgroup">
+      <label class="chk" title="Hide players already taken in the draft room">
+        <input type="checkbox" id="hidedrafted"> <span>Hide drafted</span>
+      </label>
+    </div>
+  </div>
+</div>
+
+<main id="main">
+  <section class="view" id="v-depth" hidden></section>
+  <section class="view" id="v-board" hidden></section>
+  <section class="view" id="v-value" hidden></section>
+  <section class="view" id="v-byes"  hidden></section>
+  <section class="view" id="v-sos"   hidden></section>
+  <section class="view" id="v-room"  hidden></section>
+</main>
+
+<footer class="foot">
+  <div class="foot-in">
+    <p id="sources"></p>
+    <p class="fine">Derived metrics (tier walls, market curve, VORP, schedule strength) are computed
+       from the sources above — they are not third-party projections. Read them as structure, not gospel.</p>
+  </div>
+</footer>
+
+<!-- Player detail drawer -->
+<div class="drawer-scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" hidden aria-label="Player detail" tabindex="-1">
+  <button class="drawer-x" id="drawerx" aria-label="Close">&times;</button>
+  <div id="drawer-body"></div>
+</aside>
+
+<div class="tip" id="tip" role="status" aria-live="polite" hidden></div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

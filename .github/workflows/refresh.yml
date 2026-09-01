@@ -1,0 +1,39 @@
+name: Refresh draft data
+
+# ADP moves every day of draft season, so this re-pulls every source and rebuilds
+# site/data.js. It is manual by default — uncomment the schedule block below to
+# have it run itself each morning through the draft window.
+on:
+  workflow_dispatch:
+  # schedule:
+  #   - cron: "0 12 * * *"   # 12:00 UTC daily
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Fetch sources
+        run: python tools/fetch_sources.py
+
+      - name: Rebuild site/data.js
+        run: python tools/build_data.py
+
+      - name: Commit if the data actually moved
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- site/data.js; then
+            echo "no change in site/data.js"
+            exit 0
+          fi
+          git add site/data.js
+          git commit -m "Refresh ADP, depth charts and schedule data"
+          git push

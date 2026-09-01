@@ -1,0 +1,45 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sanity-check the built data
+        run: |
+          node -e "
+          global.window = {};
+          require('./site/data.js');
+          const d = window.NFLDC;
+          const teams = Object.keys(d.teams).length;
+          const drafted = d.players.filter(p => p.adp && p.adp.ppr).length;
+          if (teams !== 32) throw new Error('expected 32 teams, got ' + teams);
+          if (drafted < 150) throw new Error('only ' + drafted + ' players carry PPR ADP');
+          if (!d.curve.ppr.RB.length) throw new Error('missing value curve');
+          console.log('data.js OK -', teams, 'teams,', d.players.length, 'players,', drafted, 'with ADP');
+          "
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deployment
+        uses: actions/deploy-pages@v4
