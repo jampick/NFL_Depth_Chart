@@ -70,9 +70,15 @@ python -m http.server -d site 8777
 `main`, after sanity-checking that `data.js` still parses and carries 32 teams
 and a plausible ADP pool.
 
-`.github/workflows/refresh.yml` re-pulls and rebuilds the data. It is
-**manual-dispatch only** by default; uncomment the `schedule:` block in that file
-to have it refresh itself daily through draft season.
+`.github/workflows/refresh.yml` re-pulls and rebuilds the data daily at 12:00
+UTC (or on manual dispatch), commits `data.js` if it moved, and dispatches the
+deploy itself, since a push from the workflow's own token doesn't trigger
+`deploy.yml`.
+
+ADP freezes at kickoff. If a format's fresh FFC pull runs past the first
+regular-season game, or has fewer than 1,000 drafts behind it, the build keeps
+that format's ADP from the committed `data.js`. In-season, the depth charts,
+injuries and schedule keep updating on top of the final preseason market.
 
 ## Design notes
 

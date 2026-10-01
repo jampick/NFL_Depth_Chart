@@ -1,15 +1,16 @@
 name: Refresh draft data
 
-# ADP moves every day of draft season, so this re-pulls every source and rebuilds
-# site/data.js. It is manual by default — uncomment the schedule block below to
-# have it run itself each morning through the draft window.
+# Re-pulls every source and rebuilds site/data.js each morning. Depth charts and
+# injuries move all season. ADP stops moving at kickoff, and build_data.py keeps
+# the last preseason ADP once FFC's pool goes in-season.
 on:
   workflow_dispatch:
-  # schedule:
-  #   - cron: "0 12 * * *"   # 12:00 UTC daily
+  schedule:
+    - cron: "0 12 * * *"   # 12:00 UTC daily
 
 permissions:
   contents: write
+  actions: write   # to dispatch deploy.yml, see the last step
 
 jobs:
   refresh:
@@ -37,3 +38,13 @@ jobs:
           git add site/data.js
           git commit -m "Refresh ADP, depth charts and schedule data"
           git push
+          echo "pushed=1" >> "$GITHUB_OUTPUT"
+        id: commit
+
+      # Pushes made with GITHUB_TOKEN don't trigger other workflows, so the
+      # deploy's push trigger never fires for this commit. Dispatch it instead.
+      - name: Deploy the new data
+        if: steps.commit.outputs.pushed == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run deploy.yml --ref main

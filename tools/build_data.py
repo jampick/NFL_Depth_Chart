@@ -27,6 +27,11 @@ SEASON, PRIOR = 2026, 2025
 FMTS = ("ppr", "half", "standard", "superflex")
 SCORING = ("ppr", "half", "standard")
 FPOS = ("QB", "RB", "WR", "TE")
+# Fresh ADP is only used if it is preseason and has volume behind it. Once a
+# format's window runs past kickoff, or falls under this many drafts (in-season
+# FFC drops to ~100 drafts covering a few dozen players), the build keeps the
+# ADP already baked into site/data.js instead. August pulls ran 1,884 to 8,161.
+MIN_ADP_DRAFTS = 1000
 # Fantasy regular season. Byes and SOS are judged over these weeks only.
 FANTASY_WEEKS = range(1, 18)
 PLAYOFF_WEEKS = (15, 16, 17)
@@ -264,12 +269,53 @@ def build_sos(fpa, sched):
 
 
 # -------------------------------------------------------------------- ADP ---
+def previous_adp(fmt, kickoff):
+    """One format's ADP out of the current site/data.js, in FFC's own shape.
+
+    data/ is a throwaway cache (and empty in CI), so the last build is the only
+    place the preseason ADP survives once FFC's in-season pool dries up.
+    """
+    try:
+        with open(os.path.join(SITE, "data.js"), encoding="utf-8") as fh:
+            src = fh.read()
+        old = json.loads(src[src.index("{"):src.rindex("}") + 1])
+    except (OSError, ValueError):
+        return None
+    meta = old.get("meta", {}).get("adp", {}).get(fmt)
+    if not meta or not usable_adp(meta, kickoff):
+        return None
+    rows = []
+    for p in old.get("players", []):
+        a = p.get("adp", {}).get(fmt)
+        if a:
+            rows.append({"name": p["name"], "position": p["pos"], "team": a.get("team"),
+                         "adp": a["adp"], "high": a.get("hi"), "low": a.get("lo"),
+                         "stdev": a.get("sd"), "times_drafted": a.get("n"),
+                         "bye": a.get("bye")})
+    return {"meta": meta, "players": rows}
+
+
+def usable_adp(meta, kickoff):
+    return ((meta.get("total_drafts") or 0) >= MIN_ADP_DRAFTS
+            and (meta.get("end_date") or "") < kickoff)
+
+
 def build_adp():
     """{playerkey: {fmt: {...}}} plus per-format overall and positional ranks."""
+    kickoff = min(g["gameday"] for g in load_csv("games.csv")
+                  if g["season"] == str(SEASON) and g["game_type"] == "REG")
     adp = defaultdict(dict)
     meta = {}
     for fmt in FMTS:
         blob = load_json("adp_%s.json" % fmt)
+        fresh = blob.get("meta", {})
+        if not usable_adp(fresh, kickoff):
+            kept = previous_adp(fmt, kickoff)
+            if kept:
+                print("  adp %s: fresh pull is %d drafts ending %s, keeping %d from the last build"
+                      % (fmt, fresh.get("total_drafts") or 0, fresh.get("end_date"),
+                         kept["meta"].get("total_drafts") or 0))
+                blob = kept
         meta[fmt] = blob.get("meta", {})
         for r in blob.get("players", []):
             pos = L.pos(r.get("position"))
