@@ -56,6 +56,16 @@ def num(v, default=0.0):
         return default
 
 
+def load_previous():
+    """The payload in the current site/data.js, or {} if there isn't one."""
+    try:
+        with open(os.path.join(SITE, "data.js"), encoding="utf-8") as fh:
+            src = fh.read()
+        return json.loads(src[src.index("{"):src.rindex("}") + 1])
+    except (OSError, ValueError):
+        return {}
+
+
 def rank_map(values, high_is_good=True):
     """{key: 1-based rank} over a {key: value} mapping."""
     order = sorted(values, key=lambda k: values[k], reverse=high_is_good)
@@ -275,12 +285,7 @@ def previous_adp(fmt, kickoff):
     data/ is a throwaway cache (and empty in CI), so the last build is the only
     place the preseason ADP survives once FFC's in-season pool dries up.
     """
-    try:
-        with open(os.path.join(SITE, "data.js"), encoding="utf-8") as fh:
-            src = fh.read()
-        old = json.loads(src[src.index("{"):src.rindex("}") + 1])
-    except (OSError, ValueError):
-        return None
+    old = load_previous()
     meta = old.get("meta", {}).get("adp", {}).get(fmt)
     if not meta or not usable_adp(meta, kickoff):
         return None
@@ -554,6 +559,14 @@ def main():
         "curve": build_curve(prior),
         "defense": {"allowed": allowed, "rank": drank},
     }
+
+    # The fetch stamp changes every run. If nothing else did, keep the old one so
+    # data.js stays byte-identical and the daily refresh has nothing to commit.
+    prev = load_previous()
+    if prev.get("meta", {}).get("generated"):
+        payload["meta"]["generated"], stamp = prev["meta"]["generated"], payload["meta"]["generated"]
+        if json.loads(json.dumps(payload)) != prev:
+            payload["meta"]["generated"] = stamp
 
     os.makedirs(SITE, exist_ok=True)
     dest = os.path.join(SITE, "data.js")
