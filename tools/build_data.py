@@ -355,7 +355,14 @@ def build_players(adp, byes):
     for pid, p in raw.items():
         pos = L.pos(p.get("position"))
         if pos not in FPOS:
-            continue
+            # Two-way players (Travis Hunter) carry a defensive primary position
+            # but a fantasy one too. Only follow it for players being drafted,
+            # or every fullback lands in the RB room.
+            alt = [L.pos(f) for f in p.get("fantasy_positions") or []]
+            pos = next((f for f in alt if f in FPOS
+                        and L.key(p.get("full_name"), f) in adp), None)
+            if pos is None:
+                continue
         tm = L.team(p.get("team"))
         k = L.key(p.get("full_name"), pos)
         has_adp = k in adp
