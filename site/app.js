@@ -1365,17 +1365,81 @@ function bind() {
   window.addEventListener("scroll", hideTip, { passive: true });
 }
 
+// ------------------------------------------------------------ freshness ---
+// meta.generated only moves when the data does (build_data.py keeps the old
+// stamp otherwise), so a quiet day would look stale. The refresh workflow's last
+// successful run says when the sources were last checked; it comes from the
+// public GitHub API and the stamp simply goes without it if that call fails.
+var REFRESH_RUNS = "https://api.github.com/repos/jampick/NFL_Depth_Chart/actions/" +
+  "workflows/refresh.yml/runs?status=success&per_page=1";
+var STALE_HOURS = 36;    // a daily job that has missed a run
+var lastCheck = null;
+
+function ago(t) {
+  var min = Math.max(0, Math.round((Date.now() - t) / 60000));
+  if (min < 2) return "just now";
+  if (min < 60) return min + " min ago";
+  var h = Math.round(min / 60);
+  if (h < 36) return h + "h ago";
+  return Math.round(h / 24) + " days ago";
+}
+
+function when(t) {
+  return new Date(t).toLocaleString(undefined,
+    { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+}
+
+function stamp() {
+  var m = D.meta;
+  var updated = Date.parse(m.generated);
+  var checked = Math.max(updated, lastCheck || 0);
+  var el = $("#stamp");
+  var adpEnd = (m.adp.ppr || {}).end_date;
+  el.textContent = "";
+  var dot = document.createElement("i");
+  dot.className = "fresh" + ((Date.now() - checked) / 36e5 > STALE_HOURS ? " stale" : "");
+  dot.setAttribute("aria-hidden", "true");
+  el.appendChild(dot);
+  // Phones drop the "st-wide" parts (style.css); the title keeps all of it.
+  [["Updated " + when(updated)],
+   [" (" + ago(updated) + ")", "st-wide"],
+   [lastCheck && lastCheck > updated ? " · checked " + ago(lastCheck) : ""],
+   [adpEnd ? " · ADP to " + adpEnd.slice(5).replace("-", "/") : "", "st-wide"]
+  ].forEach(function (part) {
+    if (!part[0]) return;
+    var s = document.createElement("span");
+    s.textContent = part[0];
+    if (part[1]) s.className = part[1];
+    el.appendChild(s);
+  });
+  el.title = "Depth charts, injuries and schedule last changed " + new Date(updated).toString() +
+    (lastCheck ? "\nSources last checked " + new Date(lastCheck).toString() : "") +
+    (adpEnd ? "\nADP covers drafts through " + adpEnd : "");
+}
+
+function checkedAt() {
+  if (!window.fetch) return;
+  fetch(REFRESH_RUNS, { headers: { Accept: "application/vnd.github+json" } })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (j) {
+      var run = j && j.workflow_runs && j.workflow_runs[0];
+      if (!run) return;
+      lastCheck = Date.parse(run.updated_at);
+      stamp();
+    })
+    .catch(function () {});
+}
+
 function boot() {
   try {
     var th = localStorage.getItem("nfldc.theme");
     if (th) document.documentElement.setAttribute("data-theme", th);
   } catch (e) {}
 
-  var m = D.meta;
-  var adpm = m.adp.ppr || {};
-  $("#stamp").textContent = "ADP through " + (adpm.end_date || "—") +
-    " · rosters " + m.generated.slice(0, 10);
-  $("#sources").textContent = "Sources — " + m.sources.join("  ·  ");
+  stamp();
+  setInterval(stamp, 60000);
+  checkedAt();
+  $("#sources").textContent = "Sources — " + D.meta.sources.join("  ·  ");
 
   bind();
   render();

@@ -118,6 +118,11 @@ a { color: var(--accent); }
 .brand-txt b { font-size: 15.5px; font-weight: 650; letter-spacing: -.02em; }
 .brand-txt .yr { color: var(--text-3); font-weight: 500; }
 .brand-txt small { font-size: 11px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.brand-txt .fresh {
+  display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+  margin-right: 5px; vertical-align: 1px; background: var(--good);
+}
+.brand-txt .fresh.stale { background: var(--warning); }
 
 .tabs { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; flex: 1 1 auto; }
 .tabs::-webkit-scrollbar { display: none; }
@@ -446,6 +451,9 @@ svg.plot .dotlab { fill: var(--text-2); font-size: 10px; font-weight: 550; }
   table.board th { top: 0; }
   .tablewrap { max-height: none; }
   .dstats { grid-template-columns: repeat(2,1fr); }
+}
+@media (max-width: 520px) {
+  .brand-txt .st-wide { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
